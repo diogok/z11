@@ -1,3 +1,5 @@
+// common structs
+
 pub const Point = extern struct {
     x: i16 = 0,
     y: i16 = 0,
@@ -82,6 +84,7 @@ pub const EventMask = enum(u32) {
     OwnerGrabButton = 0b1000000000000000000000000,
 };
 
+// util to listen to all events
 pub const EventMaskAll = blk: {
     var all: u32 = 0;
     const masks = @typeInfo(EventMask).Enum.fields;
@@ -91,6 +94,7 @@ pub const EventMaskAll = blk: {
     break :blk all;
 };
 
+// Setup structs
 pub const BackingStore = enum(u8) {
     NotUseful = 0,
     WhenMapped = 1,
@@ -144,6 +148,7 @@ pub const BitmapFormatBitOrder = enum(u8) {
     MostSignificant = 1,
 };
 
+// Split Setup (response) in two, for easier reading
 pub const SetupStatus = extern struct {
     status: u8,
     pad: u8,
@@ -152,6 +157,7 @@ pub const SetupStatus = extern struct {
     reply_len: u16,
 };
 
+// rest of Setup response
 pub const SetupContent = extern struct {
     release_number: u32,
     resource_id_base: u32,
@@ -170,21 +176,278 @@ pub const SetupContent = extern struct {
     pad: [4]u8,
 };
 
-pub const CreateWindow = extern struct {
-    opcode: u8 = 1,
-    depth: u8,
-    length: u16 = (@sizeOf(@This()) / 4),
+// events
+
+pub const ModMask = enum(u16) {
+    Shift = 0b1,
+    Lock = 0b10,
+    Control = 0b100,
+    One = 0b1000,
+    Two = 0b10000,
+    Three = 0b100000,
+    Four = 0b1000000,
+    Five = 0b10000000,
+    Any = 0b1000000000000000,
+};
+
+pub const KeyButMask = enum(u16) {
+    Shift = 0b1,
+    Lock = 0b10,
+    Control = 0b100,
+    Mod1 = 0b1000,
+    Mod2 = 0b10000,
+    Mod3 = 0b100000,
+    Mod4 = 0b1000000,
+    Mod5 = 0b10000000,
+    Button1 = 0b100000000,
+    Button2 = 0b1000000000,
+    Button3 = 0b10000000000,
+    Button4 = 0b100000000000,
+    Button5 = 0b1000000000000,
+};
+
+pub const KeyPress = extern struct {
+    code: u8 = 2,
+    keycode: u8,
+    sequence_number: u16,
+    time: u32,
+    root: u32,
+    event: u32,
+    child: u32,
+    root_x: i16,
+    root_y: i16,
+    event_x: i16,
+    event_y: i16,
+    state: u16, // KeyButMask
+    same_screen: u8, // actually a bool
+    pad: [1]u8,
+};
+
+pub const KeyRelease = extern struct {
+    code: u8 = 3,
+    keycode: u8,
+    sequence_number: u16,
+    time: u32,
+    root: u32,
+    event: u32,
+    child: u32,
+    root_x: i16,
+    root_y: i16,
+    event_x: i16,
+    event_y: i16,
+    state: u16, // KeyButMask
+    same_screen: u8, // actually a bool
+    pad: [1]u8,
+};
+
+pub const ButtonMask = enum(u16) {
+    Button1 = 0b100000000,
+    Button2 = 0b1000000000,
+    Button3 = 0b10000000000,
+    Button4 = 0b100000000000,
+    Button5 = 0b1000000000000,
+    ButtonAny = 0b1000000000000000000,
+};
+
+pub const ButtonPress = extern struct {
+    code: u8 = 4,
+    keycode: u8,
+    sequence_number: u16,
+    time: u32,
+    root: u32,
+    event: u32,
+    child: u32,
+    root_x: i16,
+    root_y: i16,
+    event_x: i16,
+    event_y: i16,
+    state: u16, //keybutmask
+    same_screen: u8, // actually a bool
+    pad: [1]u8,
+};
+
+pub const ButtonRelease = extern struct {
+    code: u8 = 5,
+    keycode: u8,
+    sequence_number: u16,
+    time: u32,
+    root: u32,
+    event: u32,
+    child: u32,
+    root_x: i16,
+    root_y: i16,
+    event_x: i16,
+    event_y: i16,
+    state: u16, //keybutmask
+    same_screen: u8, // actually a bool
+    pad: [1]u8,
+};
+
+pub const Motion = enum(u8) {
+    Normal = 0,
+    Hint = 1,
+};
+
+pub const MotionNotify = extern struct {
+    code: u8 = 6,
+    detail: Motion,
+    sequence_number: u16,
+    time: u32,
+    root: u32,
+    event: u32,
+    child: u32,
+    root_x: i16,
+    root_y: i16,
+    event_x: i16,
+    event_y: i16,
+    state: u16, //keybutmask
+    same_screen: u8, // actually a bool
+    pad: [1]u8,
+};
+
+pub const NotifyDetail = enum(u8) {
+    Ancestor,
+    Virtual,
+    Inferior,
+    Nonlinear,
+    NonlinearVirtual,
+    Pointer,
+    PointerRoot,
+    None,
+};
+
+pub const NotifyMode = enum(u8) {
+    Normal,
+    Grab,
+    Ungrab,
+    WhileGrabbed,
+};
+
+pub const EnterNotify = extern struct {
+    code: u8 = 7,
+    detail: NotifyDetail,
+    sequence_number: u16,
+    time: u32,
+    root: u32,
+    event: u32,
+    child: u32,
+    root_x: i16,
+    root_y: i16,
+    event_x: i16,
+    event_y: i16,
+    state: u16, // keybutmask
+    mode: NotifyMode,
+    same_screen: u8, // actually a bool? or not
+};
+
+pub const LeaveNotify = extern struct {
+    code: u8 = 8,
+    detail: NotifyDetail,
+    sequence_number: u16,
+    time: u32,
+    root: u32,
+    event: u32,
+    child: u32,
+    root_x: i16,
+    root_y: i16,
+    event_x: i16,
+    event_y: i16,
+    state: u16, // keybutmask
+    mode: NotifyMode,
+    same_screen: u8, // actually a bool? or not
+};
+
+pub const FocusIn = extern struct {
+    code: u8 = 9,
+    detail: NotifyDetail,
+    sequence_number: u16,
+    event: u32,
+    mode: NotifyMode,
+    pad: [23]u8,
+};
+
+pub const FocusOut = extern struct {
+    code: u8 = 10,
+    detail: NotifyDetail,
+    sequence_number: u16,
+    event: u32,
+    mode: NotifyMode,
+    pad: [23]u8,
+};
+
+pub const KeymapNotify = extern struct {
+    code: u8 = 11,
+    keys: [31]u8,
+};
+
+pub const Expose = extern struct {
+    code: u8 = 12,
+    pad0: [1]u8,
+    sequence_number: u16,
     window_id: u32,
-    parent_id: u32,
-    x: i16,
-    y: i16,
+    x: u16,
+    y: u16,
     width: u16,
     height: u16,
-    border_width: u16,
-    window_class: WindowClass,
-    visual_id: u32,
-    value_mask: u32 = 0,
+    count: u16,
+    pad1: [11]u8,
 };
+
+pub const GraphicsExposure = extern struct {
+    code: u8 = 13,
+    pad0: [1]u8,
+    sequence_number: u16,
+    drawable_id: u32,
+    x: u16,
+    y: u16,
+    width: u16,
+    height: u16,
+    minor_opcode: u16,
+    count: u16,
+    major_opcode: u8,
+    pad: [11]u8,
+};
+
+pub const NoExposure = extern struct {
+    code: u8 = 14,
+    pad0: [1]u8,
+    sequence_number: u16,
+    drawable_id: u32,
+    minor_opcode: u16,
+    major_opcode: u8,
+    pad1: [21]u8,
+};
+
+// TODO: fill rest of events
+
+pub const Placeholder = extern struct {
+    code: u8,
+    pad0: [1]u8,
+    sequence_number: u16,
+    rest: [28]u8,
+};
+pub const VisibilityNotify = Placeholder;
+pub const CreateNotify = Placeholder;
+pub const DestroyNotify = Placeholder;
+pub const UnmapNotify = Placeholder;
+pub const MapNotify = Placeholder;
+pub const MapRequest = Placeholder;
+pub const ReparentNotify = Placeholder;
+pub const ConfigureNotify = Placeholder;
+pub const ConfigureRequest = Placeholder;
+pub const GravityNotify = Placeholder;
+pub const ResizeRequest = Placeholder;
+pub const CirculateNotify = Placeholder;
+pub const CirculateRequest = Placeholder;
+pub const PropertyNotify = Placeholder;
+pub const SelectionClear = Placeholder;
+pub const SelectionRequest = Placeholder;
+pub const SelectionNotify = Placeholder;
+pub const ColormapNotify = Placeholder;
+pub const ClientMessage = Placeholder;
+pub const MappingNotify = Placeholder;
+
+// Requests
 
 pub const WindowClass = enum(u16) {
     Parent = 0,
@@ -210,9 +473,58 @@ pub const WindowMask = enum(u32) {
     cursor = 16348,
 };
 
-pub const ChangeWindowAttributes = extern struct {
-    opcode: u8 = 5,
+pub const BackPixmap = enum(u32) {
+    None,
+    ParentRelative,
 };
+
+pub const Gravity = enum(u8) {
+    BitForget,
+    WinUnmap,
+    NorthWest,
+    North,
+    NorthEast,
+    West,
+    Center,
+    East,
+    SouthWest,
+    South,
+    SouthEast,
+    Static,
+};
+
+pub const CreateWindow = extern struct {
+    opcode: u8 = 1,
+    depth: u8,
+    length: u16 = (@sizeOf(@This()) / 4),
+    window_id: u32,
+    parent_id: u32,
+    x: i16,
+    y: i16,
+    width: u16,
+    height: u16,
+    border_width: u16,
+    window_class: WindowClass,
+    visual_id: u32,
+    value_mask: u32 = 0,
+};
+
+pub const ChangeWindowAttributes = extern struct {
+    opcode: u8 = 2,
+    unused: u8 = 0,
+    length: u16 = (@sizeOf(@This()) / 4),
+    window_id: u32,
+    value_mask: u32 = 0,
+};
+
+pub const GetWindowAttributes = extern struct {
+    opcode: u8 = 3,
+    unused: u8 = 0,
+    length: u16 = (@sizeOf(@This()) / 4),
+    window_id: u32,
+};
+
+// TODO: GetWindowAttributes reply?
 
 pub const DestroyWindow = extern struct {
     opcode: u8 = 4,
@@ -221,8 +533,39 @@ pub const DestroyWindow = extern struct {
     window_id: u32,
 };
 
+pub const DestroySubwindows = extern struct {
+    opcode: u8 = 5,
+    pad: u8 = 0,
+    length: u16 = @sizeOf(@This()) / 4,
+    window_id: u32,
+};
+
+pub const ChangeSaveSet = extern struct {
+    opcode: u8 = 6,
+    mode: u8 = enum { Insert, Delete },
+    length: u16 = @sizeOf(@This()) / 4,
+    window_id: u32,
+};
+
+pub const ReparentWindow = extern struct {
+    opcode: u8 = 7,
+    unused: u8 = 0,
+    length: u16 = @sizeOf(@This()) / 4,
+    window_id: u32,
+    parent_window_id: u32,
+    x: i16 = 0,
+    y: i16 = 0,
+};
+
 pub const MapWindow = extern struct {
     opcode: u8 = 8,
+    pad: u8 = 0,
+    length: u16 = @sizeOf(@This()) / 4,
+    window_id: u32,
+};
+
+pub const MapSubwindows = extern struct {
+    opcode: u8 = 9,
     pad: u8 = 0,
     length: u16 = @sizeOf(@This()) / 4,
     window_id: u32,
@@ -233,6 +576,40 @@ pub const UnmapWindow = extern struct {
     pad: u8 = 0,
     length: u16 = @sizeOf(@This()) / 4,
     window_id: u32,
+};
+
+pub const UnmapSubwindows = extern struct {
+    opcode: u8 = 11,
+    pad: u8 = 0,
+    length: u16 = @sizeOf(@This()) / 4,
+    window_id: u32,
+};
+
+pub const ConfigWindow = enum(u16) {
+    X = 0b1,
+    Y = 0b10,
+    Width = 0b100,
+    Height = 0b1000,
+    BorderWidth = 0b10000,
+    Sibling = 0b100000,
+    StackMode = 0b1000000,
+};
+
+pub const StackMode = enum(u8) {
+    Above,
+    Below,
+    TopIf,
+    BottomIf,
+    Opposite,
+};
+
+pub const ConfigureWindow = extern struct {
+    opcode: u8 = 12,
+    pad: u8 = 0,
+    length: u16 = @sizeOf(@This()) / 4,
+    window_id: u32,
+    values: u16,
+    pad1: [2]u8 = [2]u8{ 0, 0 },
 };
 
 pub const CreatePixmap = extern struct {
@@ -319,6 +696,8 @@ pub const CopyArea = extern struct {
     height: u16,
 };
 
+// Error handling
+
 pub const ErrorMessage = extern struct {
     message_code: u8, // already read to know it is an error
     error_code: ErrorCodes,
@@ -348,102 +727,4 @@ pub const ErrorCodes = enum(u8) {
     Name,
     Length,
     Implementation,
-};
-
-pub const KeyPress = extern struct {
-    code: u8 = 2,
-    keycode: u8,
-    sequence_number: u16,
-    time: u32,
-    root: u32,
-    event: u32,
-    child: u32,
-    root_x: i16,
-    root_y: i16,
-    event_x: i16,
-    event_y: i16,
-    state: u16,
-    same_screen: u8, // actually a bool
-    pad: [1]u8,
-};
-
-pub const KeyRelease = extern struct {
-    code: u8 = 3,
-    keycode: u8,
-    sequence_number: u16,
-    time: u32,
-    root: u32,
-    event: u32,
-    child: u32,
-    root_x: i16,
-    root_y: i16,
-    event_x: i16,
-    event_y: i16,
-    state: u16,
-    same_screen: u8, // actually a bool
-    pad: [1]u8,
-};
-
-pub const ButtonPress = extern struct {
-    code: u8 = 4,
-    keycode: u8,
-    sequence_number: u16,
-    time: u32,
-    root: u32,
-    event: u32,
-    child: u32,
-    root_x: i16,
-    root_y: i16,
-    event_x: i16,
-    event_y: i16,
-    state: u16,
-    same_screen: u8, // actually a bool
-    pad: [1]u8,
-};
-
-pub const ButtonRelease = extern struct {
-    code: u8 = 5,
-    keycode: u8,
-    sequence_number: u16,
-    time: u32,
-    root: u32,
-    event: u32,
-    child: u32,
-    root_x: i16,
-    root_y: i16,
-    event_x: i16,
-    event_y: i16,
-    state: u16,
-    same_screen: u8, // actually a bool
-    pad: [1]u8,
-};
-
-pub const Expose = extern struct {
-    code: u8 = 12,
-    window_id: u32,
-    x: u16,
-    y: u16,
-    width: u16,
-    height: u16,
-    minor_opcode: u16,
-    count: u16,
-    major_opcode: u8,
-};
-
-pub const GraphicsExposure = extern struct {
-    code: u8 = 13,
-    drawable_id: u32,
-    x: u16,
-    y: u16,
-    width: u16,
-    height: u16,
-    count: u16,
-};
-
-pub const NoExposure = extern struct {
-    code: u8 = 14,
-    drawable_id: u32,
-    minor_opcode: u16,
-    major_opcode: u8,
-    //pad1: [24]u8,
 };
