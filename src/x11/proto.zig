@@ -50,9 +50,9 @@ pub const VisualType = extern struct {
 
 pub const Depth = extern struct {
     depth: u8,
-    pad0: [1]u8,
+    unused: [1]u8,
     visual_type_len: u16,
-    pad1: [4]u8,
+    pad: [4]u8,
 };
 
 pub const EventMask = enum(u32) {
@@ -82,16 +82,6 @@ pub const EventMask = enum(u32) {
     PropertyChange = 0b10000000000000000000000,
     ColormapChange = 0b100000000000000000000000,
     OwnerGrabButton = 0b1000000000000000000000000,
-};
-
-// util to listen to all events
-pub const EventMaskAll = blk: {
-    var all: u32 = 0;
-    const masks = @typeInfo(EventMask).Enum.fields;
-    for (masks) |mask| {
-        all |= mask.value;
-    }
-    break :blk all;
 };
 
 // Setup structs
@@ -129,12 +119,12 @@ pub const SetupRequest = extern struct {
         .big => 'B',
         .little => 'l',
     },
-    pad0: u8 = 0,
+    unused: u8 = 0,
     protocol_major_version: u16 = 11,
     procotol_minor_version: u16 = 0,
     auth_name_len: u16,
     auth_data_len: u16,
-    pad1: [2]u8 = [2]u8{ 0, 0 },
+    pad: [2]u8 = [2]u8{ 0, 0 },
     // must send auth data and padding
 };
 
@@ -382,7 +372,7 @@ pub const KeymapNotify = extern struct {
 
 pub const Expose = extern struct {
     code: u8 = 12,
-    pad0: [1]u8,
+    unused: [1]u8,
     sequence_number: u16,
     window_id: u32,
     x: u16,
@@ -390,12 +380,12 @@ pub const Expose = extern struct {
     width: u16,
     height: u16,
     count: u16,
-    pad1: [11]u8,
+    pad: [11]u8,
 };
 
 pub const GraphicsExposure = extern struct {
     code: u8 = 13,
-    pad0: [1]u8,
+    unused: [1]u8,
     sequence_number: u16,
     drawable_id: u32,
     x: u16,
@@ -410,25 +400,62 @@ pub const GraphicsExposure = extern struct {
 
 pub const NoExposure = extern struct {
     code: u8 = 14,
-    pad0: [1]u8,
+    unused: [1]u8,
     sequence_number: u16,
     drawable_id: u32,
     minor_opcode: u16,
     major_opcode: u8,
-    pad1: [21]u8,
+    pad: [21]u8,
 };
 
 // TODO: fill rest of events
 
 pub const Placeholder = extern struct {
     code: u8,
-    pad0: [1]u8,
+    unused: [1]u8,
     sequence_number: u16,
     rest: [28]u8,
 };
-pub const VisibilityNotify = Placeholder;
-pub const CreateNotify = Placeholder;
-pub const DestroyNotify = Placeholder;
+
+pub const Visilibity = enum(u8) {
+    Unobscured,
+    PartiallyObscured,
+    FullyObscured,
+};
+
+pub const VisibilityNotify = extern struct {
+    code: u8 = 15,
+    unused: [1]u8,
+    sequence_number: u16,
+    window_id: u32,
+    state: Visilibity,
+    pad: [23]u8,
+};
+
+pub const CreateNotify = extern struct {
+    code: u8 = 16,
+    unused: [1]u8,
+    sequence_number: u16,
+    window_id: u32,
+    parent_id: u32,
+    x: i16,
+    y: i16,
+    width: u16,
+    height: u16,
+    border_width: u16,
+    override_redirect: u8,
+    pad: [9]u8,
+};
+
+pub const DestroyNotify = extern struct {
+    code: u8 = 16,
+    unused: [1]u8,
+    sequence_number: u16,
+    event: u32,
+    window_id: u32,
+    pad: [20]u8,
+};
+
 pub const UnmapNotify = Placeholder;
 pub const MapNotify = Placeholder;
 pub const MapRequest = Placeholder;
@@ -436,7 +463,17 @@ pub const ReparentNotify = Placeholder;
 pub const ConfigureNotify = Placeholder;
 pub const ConfigureRequest = Placeholder;
 pub const GravityNotify = Placeholder;
-pub const ResizeRequest = Placeholder;
+
+pub const ResizeRequest = extern struct {
+    code: u8 = 25,
+    unused: [1]u8,
+    sequence_number: u16,
+    window_id: u32,
+    width: u16,
+    height: u16,
+    pad: [20]u8,
+};
+
 pub const CirculateNotify = Placeholder;
 pub const CirculateRequest = Placeholder;
 pub const PropertyNotify = Placeholder;
@@ -605,11 +642,11 @@ pub const StackMode = enum(u8) {
 
 pub const ConfigureWindow = extern struct {
     opcode: u8 = 12,
-    pad: u8 = 0,
+    unused: u8 = 0,
     length: u16 = @sizeOf(@This()) / 4,
     window_id: u32,
     values: u16,
-    pad1: [2]u8 = [2]u8{ 0, 0 },
+    pad: [2]u8 = [2]u8{ 0, 0 },
 };
 
 pub const CreatePixmap = extern struct {
@@ -624,9 +661,14 @@ pub const CreatePixmap = extern struct {
 
 pub const FreePixmap = extern struct {
     opcode: u8 = 54,
-    pad0: u8 = 0,
+    unused: u8 = 0,
     length: u16 = @sizeOf(@This()) / 4,
     pixmap_id: u32,
+};
+
+// TODO: GraphicContext masks
+pub const GraphicContextMask = enum(u32) {
+    to_do,
 };
 
 pub const CreateGraphicContext = extern struct {
@@ -638,41 +680,16 @@ pub const CreateGraphicContext = extern struct {
     value_mask: u32 = 0,
 };
 
-pub const GraphicContextMask = enum(u32) {
-    to_do,
-};
-
 pub const FreeGraphicContext = extern struct {
     opcode: u8 = 60,
-    pad0: u8 = 0,
+    unused: u8 = 0,
     length: u16 = @sizeOf(@This()) / 4,
     graphic_context_id: u32,
 };
 
-pub const PutImage = extern struct {
-    opcode: u8 = 72,
-    format: ImageFormat = .ZPixmap,
-    length: u16 = (@sizeOf(@This()) / 4),
-    drawable_id: u32,
-    graphic_context_id: u32,
-    width: u16,
-    height: u16,
-    x: i16,
-    y: i16,
-    left_pad: u8 = 0,
-    depth: u8,
-    pad: [2]u8 = .{ 0, 0 },
-};
-
-pub const ImageFormat = enum(u8) {
-    XYBitmap = 0,
-    XYPixmap = 1,
-    ZPixmap = 2,
-};
-
 pub const ClearArea = extern struct {
     opcode: u8 = 61,
-    exposures: u8 = 0,
+    exposures: bool = false,
     length: u16 = (@sizeOf(@This()) / 4),
     window_id: u32,
     x: i16 = 0,
@@ -694,6 +711,27 @@ pub const CopyArea = extern struct {
     dst_y: i16 = 0,
     width: u16,
     height: u16,
+};
+
+pub const ImageFormat = enum(u8) {
+    XYBitmap = 0,
+    XYPixmap = 1,
+    ZPixmap = 2,
+};
+
+pub const PutImage = extern struct {
+    opcode: u8 = 72,
+    format: ImageFormat = .ZPixmap,
+    length: u16 = (@sizeOf(@This()) / 4),
+    drawable_id: u32,
+    graphic_context_id: u32,
+    width: u16,
+    height: u16,
+    x: i16,
+    y: i16,
+    left_pad: u8 = 0,
+    depth: u8,
+    pad: [2]u8 = .{ 0, 0 },
 };
 
 // Error handling

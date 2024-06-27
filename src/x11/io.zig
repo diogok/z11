@@ -45,39 +45,53 @@ pub fn receive(reader: anytype) !?Message {
     var message_reader = message_stream.reader();
 
     const message_code = message_buffer[0];
-    switch (message_code) {
-        0 => {
-            const message = try message_reader.readStruct(proto.ErrorMessage);
-            return Message{ .error_message = message };
-        },
-        1 => {
-            const message = try message_reader.readStruct(proto.KeyPress);
-            return Message{ .key_press = message };
-        },
-        12 => {
-            const message = try message_reader.readStruct(proto.Expose);
-            return Message{ .expose = message };
-        },
-        13 => {
-            const message = try message_reader.readStruct(proto.GraphicsExposure);
-            return Message{ .graphics_exposure = message };
-        },
-        14 => {
-            const message = try message_reader.readStruct(proto.NoExposure);
-            return Message{ .no_exposure = message };
-        },
-        else => {
-            std.debug.print("Received unkown message: {d}\n", .{message_code});
-        },
+
+    const message_tag = std.meta.Tag(Message);
+    const message_values = comptime std.meta.fields(message_tag);
+    inline for (message_values) |tag| {
+        if (message_code == tag.value) {
+            const message = try message_reader.readStruct(@field(proto, tag.name));
+            return @unionInit(Message, tag.name, message);
+        }
     }
 
     return null;
 }
 
 const Message = union(enum(u8)) {
-    error_message: proto.ErrorMessage,
-    key_press: proto.KeyPress,
-    expose: proto.Expose,
-    graphics_exposure: proto.GraphicsExposure,
-    no_exposure: proto.NoExposure,
+    ErrorMessage: proto.ErrorMessage,
+    Placeholder: proto.Placeholder,
+    KeyPress: proto.KeyPress,
+    KeyRelease: proto.KeyRelease,
+    ButtonPress: proto.ButtonPress,
+    ButtonRelease: proto.ButtonRelease,
+    MotionNotify: proto.MotionNotify,
+    EnterNotify: proto.EnterNotify,
+    LeaveNotify: proto.LeaveNotify,
+    FocusIn: proto.FocusIn,
+    FocusOut: proto.FocusOut,
+    KeymapNotify: proto.KeymapNotify,
+    Expose: proto.Expose,
+    GraphicsExposure: proto.GraphicsExposure,
+    NoExposure: proto.NoExposure,
+    VisibilityNotify: proto.VisibilityNotify,
+    CreateNotify: proto.CreateNotify,
+    DestroyNotify: proto.DestroyNotify,
+    UnmapNotify: proto.UnmapNotify,
+    MapNotify: proto.MapNotify,
+    MapRequest: proto.MapRequest,
+    ReparentNotify: proto.ReparentNotify,
+    ConfigureNotify: proto.ConfigureNotify,
+    ConfigureRequest: proto.ConfigureRequest,
+    GravityNotify: proto.GravityNotify,
+    ResizeRequest: proto.ResizeRequest,
+    CirculateNotify: proto.CirculateNotify,
+    CirculateRequest: proto.CirculateRequest,
+    PropertyNotify: proto.PropertyNotify,
+    SelectionClear: proto.SelectionClear,
+    SelectionRequest: proto.SelectionRequest,
+    SelectionNotify: proto.SelectionNotify,
+    ColormapNotify: proto.ColormapNotify,
+    ClientMessage: proto.ClientMessage,
+    MappingNotify: proto.MappingNotify,
 };
