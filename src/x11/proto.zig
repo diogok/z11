@@ -492,22 +492,40 @@ pub const WindowClass = enum(u16) {
     InputOnly = 2,
 };
 
-pub const WindowMask = enum(u32) {
-    back_pixmap = 1,
-    back_pixel = 2,
-    border_pixmap = 4,
-    border_pixel = 8,
-    bit_gravity = 16,
-    win_gravity = 32,
-    backing_store = 64,
-    backing_planes = 128,
-    backing_pixel = 256,
-    override_redirect = 512,
-    save_under = 1024,
-    event_mask = 2048,
-    dont_propagate = 4096,
-    colormap = 8192,
-    cursor = 16348,
+pub const CreateWindowMask = enum(u32) {
+    BackgroundPixmap = 1,
+    BackgroundPixel = 2,
+    BorderPixmap = 4,
+    BorderPixel = 8,
+    BitGravity = 16,
+    WinGravity = 32,
+    BackingStore = 64,
+    BackingPlanes = 128,
+    BackingPixel = 256,
+    OverrideRedirect = 512,
+    SaveUnder = 1024,
+    EventMask = 2048,
+    DoNotPropagateMask = 4096,
+    Colormap = 8192,
+    Cursor = 16348,
+};
+
+pub const CreateWindowValue = struct {
+    BackgroundPixmap: ?u32 = null,
+    BackgroundPixel: ?u32 = null,
+    BorderPixmap: ?u32 = null,
+    BorderPixel: ?u32 = null,
+    BitGravity: ?Gravity = null,
+    WinGravity: ?Gravity = null,
+    BackingStore: ?BackingStore = null,
+    BackingPlanes: ?u32 = null,
+    BackingPixel: ?u32 = null,
+    OverrideRedirect: ?bool = null,
+    SaveUnder: ?bool = null,
+    EventMask: ?u32 = null,
+    DoNotPropagateMask: ?u32 = null,
+    Colormap: ?u32 = null,
+    Cursor: ?u32 = null,
 };
 
 pub const BackPixmap = enum(u32) {
@@ -666,14 +684,35 @@ pub const FreePixmap = extern struct {
     pixmap_id: u32,
 };
 
-// TODO: GraphicContext masks
 pub const GraphicContextMask = enum(u32) {
-    to_do,
+    Function,
+    PlaneMask,
+    Foreground,
+    Background,
+    LineWidth,
+    LineStyle,
+    CapStyle,
+    JoinStyle,
+    FillStyle,
+    FillRule,
+    Tile,
+    Stipple,
+    TileStippleOriginX,
+    TileStippleOriginY,
+    Font,
+    SubwindowMode,
+    GraphicsExposures,
+    ClipOriginX,
+    ClipOriginY,
+    ClipMask,
+    DashOffset,
+    DashList,
+    Archmode,
 };
 
 pub const CreateGraphicContext = extern struct {
     opcode: u8 = 55,
-    pad: u8 = 0,
+    unused: u8 = 0,
     length: u16 = (@sizeOf(@This()) / 4),
     graphic_context_id: u32,
     drawable_id: u32,

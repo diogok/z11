@@ -15,7 +15,12 @@ pub fn main() !void {
     var xID = x11.XID.init(info.resource_id_base, info.resource_id_mask);
 
     const window_id = try xID.genID();
-    const win_req = x11.CreateWindow{
+    const window_values = x11.CreateWindowValue{
+        .BackgroundPixel = info.screens[0].black_pixel,
+        .EventMask = x11.EventMaskAll,
+        .Colormap = info.screens[0].colormap,
+    };
+    const create_window = x11.CreateWindow{
         .window_id = window_id,
 
         .parent_id = info.screens[0].root,
@@ -29,11 +34,10 @@ pub fn main() !void {
         .border_width = 0,
         .window_class = .InputOutput,
 
-        .value_mask = @intFromEnum(x11.WindowMask.back_pixel) | @intFromEnum(x11.WindowMask.colormap) | @intFromEnum(x11.WindowMask.event_mask),
+        .value_mask = x11.maskFromValues(x11.CreateWindowMask, window_values),
+        //.value_mask = @intFromEnum(x11.WindowMask.back_pixel) | @intFromEnum(x11.WindowMask.colormap) | @intFromEnum(x11.WindowMask.event_mask),
     };
-    const event_mask = x11.EventMaskAll;
-    const win_values = [_]u32{ info.screens[0].black_pixel, event_mask, info.screens[0].colormap }; // from smaller mask to bigger
-    try x11.sendWithValues(conn, win_req, &win_values);
+    try x11.sendWithValues(conn, create_window, window_values);
 
     const map_req = x11.MapWindow{ .window_id = window_id };
     try x11.send(conn, map_req);
@@ -42,14 +46,18 @@ pub fn main() !void {
     const pixmap_req = x11.CreatePixmap{
         .pixmap_id = pixmap_id,
         .drawable_id = window_id,
-        .width = win_req.width,
-        .height = win_req.height,
-        .depth = win_req.depth,
+        .width = create_window.width,
+        .height = create_window.height,
+        .depth = create_window.depth,
     };
     try x11.send(conn, pixmap_req);
 
     const graphic_context_id = try xID.genID();
-    try x11.send(conn, x11.CreateGraphicContext{ .graphic_context_id = graphic_context_id, .drawable_id = pixmap_id });
+    const create_gc = x11.CreateGraphicContext{
+        .graphic_context_id = graphic_context_id,
+        .drawable_id = pixmap_id,
+    };
+    try x11.send(conn, create_gc);
 
     var yellow_block: [5 * 5 * 4]u8 = undefined;
     var byte_index: usize = 0;
@@ -60,7 +68,7 @@ pub fn main() !void {
         yellow_block[byte_index + 3] = 0; // padding
     }
 
-    const imageInfo = x11.getImageInfo(info, win_req.parent_id);
+    const imageInfo = x11.getImageInfo(info, create_window.parent_id);
     const yellow_block_zpixmap = try x11.rgbaToZPixmapAlloc(allocator, imageInfo, &yellow_block);
     defer allocator.free(yellow_block_zpixmap);
 

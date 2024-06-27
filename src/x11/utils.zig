@@ -12,3 +12,14 @@ pub const EventMaskAll = blk: {
     all ^= @intFromEnum(proto.EventMask.OwnerGrabButton);
     break :blk all;
 };
+
+pub fn maskFromValues(comptime MaskType: type, values: anytype) u32 {
+    var value_mask: u32 = 0;
+    inline for (@typeInfo(@TypeOf(values)).Struct.fields) |field| {
+        const value = @field(values, field.name);
+        if (value) |_| {
+            value_mask |= @intFromEnum(@field(MaskType, field.name));
+        }
+    }
+    return value_mask;
+}
