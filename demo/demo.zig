@@ -15,7 +15,7 @@ pub fn main() !void {
     var xID = x11.XID.init(info.resource_id_base, info.resource_id_mask);
 
     const window_id = try xID.genID();
-    const window_values = x11.CreateWindowValue{
+    const window_values = x11.WindowValue{
         .BackgroundPixel = info.screens[0].black_pixel,
         .EventMask = x11.EventMaskAll,
         .Colormap = info.screens[0].colormap,
@@ -34,7 +34,7 @@ pub fn main() !void {
         .border_width = 0,
         .window_class = .InputOutput,
 
-        .value_mask = x11.maskFromValues(x11.CreateWindowMask, window_values),
+        .value_mask = x11.maskFromValues(x11.WindowMask, window_values),
         //.value_mask = @intFromEnum(x11.WindowMask.back_pixel) | @intFromEnum(x11.WindowMask.colormap) | @intFromEnum(x11.WindowMask.event_mask),
     };
     try x11.sendWithValues(conn, create_window, window_values);

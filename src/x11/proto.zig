@@ -492,7 +492,7 @@ pub const WindowClass = enum(u16) {
     InputOnly = 2,
 };
 
-pub const CreateWindowMask = enum(u32) {
+pub const WindowMask = enum(u32) {
     BackgroundPixmap = 1,
     BackgroundPixel = 2,
     BorderPixmap = 4,
@@ -510,7 +510,7 @@ pub const CreateWindowMask = enum(u32) {
     Cursor = 16348,
 };
 
-pub const CreateWindowValue = struct {
+pub const WindowValue = struct {
     BackgroundPixmap: ?u32 = null,
     BackgroundPixel: ?u32 = null,
     BorderPixmap: ?u32 = null,
@@ -640,7 +640,7 @@ pub const UnmapSubwindows = extern struct {
     window_id: u32,
 };
 
-pub const ConfigWindow = enum(u16) {
+pub const ConfigureWindowMask = enum(u16) {
     X = 0b1,
     Y = 0b10,
     Width = 0b100,
@@ -658,6 +658,16 @@ pub const StackMode = enum(u8) {
     Opposite,
 };
 
+pub const ConfigureWindowValues = struct {
+    Y: ?i16,
+    X: ?i16,
+    Width: ?u16,
+    Height: ?u16,
+    BorderWidth: ?u16,
+    Sibling: ?u32,
+    StackMode: ?StackMode,
+};
+
 pub const ConfigureWindow = extern struct {
     opcode: u8 = 12,
     unused: u8 = 0,
@@ -666,6 +676,55 @@ pub const ConfigureWindow = extern struct {
     values: u16,
     pad: [2]u8 = [2]u8{ 0, 0 },
 };
+
+pub const CirculateWindow = extern struct {
+    opcode: u8 = 13,
+    direction: u8 = enum { RaiseLowest, LowerHighest },
+    length: u16 = @sizeOf(@This()) / 4,
+    window_id: u32,
+};
+
+pub const ChangeProperty = extern struct {
+    opcode: u8 = 18,
+    mode: u8 = enum { Replace, Prepend, Append },
+    length: u16 = @sizeOf(@This()) / 4,
+    window_id: u32,
+    property: u32,
+    property_type: u32,
+    format: u8,
+    unused: [3]u8,
+    length_of_data: u32,
+};
+
+pub const DeleteProperty = extern struct {
+    opcode: u8 = 19,
+    unused: u8 = 0,
+    length: u16 = @sizeOf(@This()) / 4,
+    window_id: u32,
+    property: u32,
+};
+
+pub const GetProperty = extern struct {
+    opcode: u8 = 20,
+    delete: bool,
+    length: u16 = (@sizeOf(@This()) / 4),
+    window_id: u32,
+    property: u32,
+    property_type: u32,
+    long_offset: u32,
+    long_length: u32,
+};
+
+//TODO: GetProperty Reply
+
+pub const ListProperties = extern struct {
+    opcode: u8 = 21,
+    unused: u8,
+    length: u16 = (@sizeOf(@This()) / 4),
+    window_id: u32,
+};
+
+//TODO: ListProperties Reply
 
 pub const CreatePixmap = extern struct {
     opcode: u8 = 53,
@@ -685,29 +744,114 @@ pub const FreePixmap = extern struct {
 };
 
 pub const GraphicContextMask = enum(u32) {
-    Function,
-    PlaneMask,
-    Foreground,
-    Background,
-    LineWidth,
-    LineStyle,
-    CapStyle,
-    JoinStyle,
-    FillStyle,
-    FillRule,
-    Tile,
-    Stipple,
-    TileStippleOriginX,
-    TileStippleOriginY,
-    Font,
-    SubwindowMode,
-    GraphicsExposures,
-    ClipOriginX,
-    ClipOriginY,
-    ClipMask,
-    DashOffset,
-    DashList,
-    Archmode,
+    Function = 0x00000001,
+    PlaneMask = 0x00000002,
+    Foreground = 0x00000004,
+    Background = 0x00000008,
+    LineWidth = 0x00000010,
+    LineStyle = 0x00000020,
+    CapStyle = 0x00000040,
+    JoinStyle = 0x00000080,
+    FillStyle = 0x00000100,
+    FillRule = 0x00000200,
+    Tile = 0x00000400,
+    Stipple = 0x00000800,
+    TileStippleOriginX = 0x00001000,
+    TileStippleOriginY = 0x00002000,
+    Font = 0x00004000,
+    SubwindowMode = 0x00008000,
+    GraphicsExposures = 0x00010000,
+    ClipOriginX = 0x00020000,
+    ClipOriginY = 0x00040000,
+    ClipMask = 0x00080000,
+    DashOffset = 0x00100000,
+    DashList = 0x00200000,
+    ArcMode = 0x00400000,
+};
+
+pub const Function = enum(u8) {
+    Clear,
+    And,
+    AndReverse,
+    Copy,
+    AndInverted,
+    NoOp,
+    Xor,
+    Or,
+    Nor,
+    Equiv,
+    Invert,
+    OrReverse,
+    CopyInverted,
+    OrInverted,
+    Nand,
+    Set,
+};
+
+pub const LineStyle = enum(u8) {
+    Solid,
+    OnOffDash,
+    DoubleDash,
+};
+pub const CapStyle = enum(u8) {
+    NotLast,
+    Butt,
+    Round,
+    Projecting,
+};
+
+pub const JoinStyle = enum(u8) {
+    Miter,
+    OnOffDash,
+    Round,
+};
+
+pub const FillStyle = enum(u8) {
+    Solid,
+    Tiled,
+    Stippled,
+    OpaqueStippled,
+};
+
+pub const FillRule = enum(u8) {
+    EvenOdd,
+    Winding,
+};
+
+pub const SubwindowMode = enum(u8) {
+    ClipByChildren,
+    IncludeInferiors,
+};
+
+pub const ArcMode = enum(u8) {
+    Chord,
+    PieSlice,
+};
+
+pub const GraphicContextValue = struct {
+    Function: ?Function = null,
+    PlaneMask: ?u32 = null,
+    Foreground: ?u32 = null,
+    Background: ?u32 = null,
+    LineWidth: ?u16 = null,
+    LineStyle: ?LineStyle = null,
+    CapStyle: ?u32 = null,
+    JoinStyle: ?u32 = null,
+    FillStyle: ?u32 = null,
+    FillRule: ?u32 = null,
+    Tile: ?u32 = null,
+    Stipple: ?u32 = null,
+    TileStippleOriginX: ?u32 = null,
+    TileStippleOriginY: ?u32 = null,
+    Font: ?u32 = null,
+    SubwindowMode: ?u32 = null,
+    GraphicsExposures: ?u32 = null,
+    ClipOriginX: ?u32 = null,
+    ClipOriginY: ?u32 = null,
+    ClipMask: ?u32 = null,
+    DashOffset: ?u32 = null,
+    DashList: ?u32 = null,
+    ArcMode: ?u32 = null,
 };
 
 pub const CreateGraphicContext = extern struct {
@@ -716,6 +860,23 @@ pub const CreateGraphicContext = extern struct {
     length: u16 = (@sizeOf(@This()) / 4),
     graphic_context_id: u32,
     drawable_id: u32,
+    value_mask: u32 = 0,
+};
+
+pub const ChangeGraphicContext = extern struct {
+    opcode: u8 = 56,
+    unused: u8 = 0,
+    length: u16 = (@sizeOf(@This()) / 4),
+    graphic_context_id: u32,
+    value_mask: u32 = 0,
+};
+
+pub const CopyGraphicContext = extern struct {
+    opcode: u8 = 57,
+    unused: u8 = 0,
+    length: u16 = (@sizeOf(@This()) / 4),
+    src_graphic_context_id: u32,
+    dst_graphic_context_id: u32,
     value_mask: u32 = 0,
 };
 
