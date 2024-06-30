@@ -1,22 +1,11 @@
 const std = @import("std");
 const proto = @import("proto.zig");
 
+const testing = std.testing;
+
 pub fn send(writer: anytype, request: anytype) !void {
     const req_bytes: []const u8 = &std.mem.toBytes(request);
     try writer.writeAll(req_bytes);
-}
-
-pub fn sendWithValues(writer: anytype, request: anytype, values: anytype) !void {
-    var bytes: [@typeInfo(@TypeOf(values)).Struct.fields.len * 4]u8 = undefined;
-    var bytes_len: usize = 0;
-    inline for (@typeInfo(@TypeOf(values)).Struct.fields) |field| {
-        const value = @field(values, field.name);
-        if (value) |v| {
-            std.mem.copyForwards(u8, bytes[bytes_len..], std.mem.asBytes(&v));
-            bytes_len += @sizeOf(@TypeOf(v));
-        }
-    }
-    try sendWithBytes(writer, request, bytes[0..bytes_len]);
 }
 
 pub fn sendWithBytes(writer: anytype, request: anytype, bytes: []const u8) !void {

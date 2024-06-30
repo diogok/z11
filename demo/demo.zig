@@ -15,9 +15,10 @@ pub fn main() !void {
     var xID = x11.XID.init(info.resource_id_base, info.resource_id_mask);
 
     const window_id = try xID.genID();
+    const event_masks = [_]x11.EventMask{ .Exposure, .StructureNotify, .SubstructureNotify, .PropertyChange };
     const window_values = x11.WindowValue{
         .BackgroundPixel = info.screens[0].black_pixel,
-        .EventMask = x11.EventMaskAll,
+        .EventMask = x11.mask(&event_masks),
         .Colormap = info.screens[0].colormap,
     };
     const create_window = x11.CreateWindow{
