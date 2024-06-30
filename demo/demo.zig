@@ -36,29 +36,33 @@ pub fn main() !void {
         .window_class = .InputOutput,
 
         .value_mask = x11.maskFromValues(x11.WindowMask, window_values),
-        //.value_mask = @intFromEnum(x11.WindowMask.back_pixel) | @intFromEnum(x11.WindowMask.colormap) | @intFromEnum(x11.WindowMask.event_mask),
     };
     try x11.sendWithValues(conn, create_window, window_values);
 
     const map_req = x11.MapWindow{ .window_id = window_id };
     try x11.send(conn, map_req);
 
+    const graphic_context_id = try xID.genID();
+    const graphic_context_values = x11.GraphicContextValue{
+        .Background = info.screens[0].black_pixel,
+        .Foreground = info.screens[0].white_pixel,
+    };
+    const create_gc = x11.CreateGraphicContext{
+        .graphic_context_id = graphic_context_id,
+        .drawable_id = window_id,
+        .value_mask = x11.maskFromValues(x11.GraphicContextMask, graphic_context_values),
+    };
+    try x11.sendWithValues(conn, create_gc, graphic_context_values);
+
     const pixmap_id = try xID.genID();
     const pixmap_req = x11.CreatePixmap{
         .pixmap_id = pixmap_id,
         .drawable_id = window_id,
-        .width = create_window.width,
-        .height = create_window.height,
+        .width = 5,
+        .height = 5,
         .depth = create_window.depth,
     };
     try x11.send(conn, pixmap_req);
-
-    const graphic_context_id = try xID.genID();
-    const create_gc = x11.CreateGraphicContext{
-        .graphic_context_id = graphic_context_id,
-        .drawable_id = pixmap_id,
-    };
-    try x11.send(conn, create_gc);
 
     var yellow_block: [5 * 5 * 4]u8 = undefined;
     var byte_index: usize = 0;
@@ -73,6 +77,17 @@ pub fn main() !void {
     const yellow_block_zpixmap = try x11.rgbaToZPixmapAlloc(allocator, imageInfo, &yellow_block);
     defer allocator.free(yellow_block_zpixmap);
 
+    const put_image_req = x11.PutImage{
+        .drawable_id = pixmap_id,
+        .graphic_context_id = graphic_context_id,
+        .width = 5,
+        .height = 5,
+        .x = 0,
+        .y = 0,
+        .depth = pixmap_req.depth,
+    };
+    try x11.sendWithBytes(conn, put_image_req, yellow_block_zpixmap);
+
     var open = true;
     while (open) {
         while (try x11.receive(conn)) |message| {
@@ -84,23 +99,14 @@ pub fn main() !void {
                     };
                     try x11.send(conn, clear_area);
 
-                    const put_image_req = x11.PutImage{
-                        .drawable_id = pixmap_id,
-                        .graphic_context_id = graphic_context_id,
-                        .width = 5,
-                        .height = 5,
-                        .x = 100,
-                        .y = 200,
-                        .depth = info.screens[0].root_depth,
-                    };
-                    try x11.sendWithBytes(conn, put_image_req, yellow_block_zpixmap);
-
                     const copy_area_req = x11.CopyArea{
                         .src_drawable_id = pixmap_id,
                         .dst_drawable_id = window_id,
                         .graphic_context_id = graphic_context_id,
                         .width = pixmap_req.width,
                         .height = pixmap_req.height,
+                        .dst_x = 100,
+                        .dst_y = 200,
                     };
                     try x11.send(conn, copy_area_req);
                 },
