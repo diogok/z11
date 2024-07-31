@@ -525,7 +525,7 @@ pub const PropertyNotify = extern struct {
         NewValue,
         Deleted,
     },
-    pad: [25]u8,
+    pad: [15]u8,
 };
 
 pub const SelectionClear = Placeholder;
