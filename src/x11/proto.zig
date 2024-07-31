@@ -460,8 +460,45 @@ pub const UnmapNotify = Placeholder;
 pub const MapNotify = Placeholder;
 pub const MapRequest = Placeholder;
 pub const ReparentNotify = Placeholder;
-pub const ConfigureNotify = Placeholder;
-pub const ConfigureRequest = Placeholder;
+
+pub const ConfigureNotify = extern struct {
+    code: u8 = 22,
+    unused: u8,
+    sequence_number: u16,
+    event: u32,
+    window_id: u32,
+    sibling: u32,
+    x: i16,
+    y: i16,
+    width: u16,
+    height: u16,
+    border_width: u16,
+    override_redirect: bool,
+    pad: [5]u8,
+};
+
+pub const ConfigureRequest = extern struct {
+    code: u8 = 23,
+    stack_mode: enum(u8) {
+        Above,
+        Below,
+        TopIf,
+        BottomIf,
+        Opposite,
+    },
+    sequence_number: u16,
+    parent: u32,
+    window_id: u32,
+    sibling: u32,
+    x: i16,
+    y: i16,
+    width: u16,
+    height: u16,
+    border_width: u16,
+    value_mask: u16,
+    pad: [4]u8,
+};
+
 pub const GravityNotify = Placeholder;
 
 pub const ResizeRequest = extern struct {
@@ -476,13 +513,48 @@ pub const ResizeRequest = extern struct {
 
 pub const CirculateNotify = Placeholder;
 pub const CirculateRequest = Placeholder;
-pub const PropertyNotify = Placeholder;
+
+pub const PropertyNotify = extern struct {
+    code: u8 = 28,
+    unused: u8,
+    sequence_number: u16,
+    window_id: u32,
+    atom: u32,
+    timestamp: u32,
+    state: enum(u8) {
+        NewValue,
+        Deleted,
+    },
+    pad: [25]u8,
+};
+
 pub const SelectionClear = Placeholder;
 pub const SelectionRequest = Placeholder;
 pub const SelectionNotify = Placeholder;
 pub const ColormapNotify = Placeholder;
-pub const ClientMessage = Placeholder;
-pub const MappingNotify = Placeholder;
+
+pub const ClientMessage = extern struct {
+    code: u8 = 33,
+    format: u8,
+    sequence_number: u16,
+    window_id: u32,
+    data_Type: u32,
+    data: [20]u8,
+};
+
+pub const MappingNotify = extern struct {
+    code: u8 = 34,
+    unused: [1]u8,
+    sequence_number: u16,
+    request: enum(u8) {
+        Modified,
+        Keyboard,
+        Pointer,
+    },
+    keycode: u8,
+    count: u8,
+    pad: [25]u8,
+};
 
 // Requests
 
@@ -932,6 +1004,12 @@ pub const PutImage = extern struct {
     left_pad: u8 = 0,
     depth: u8,
     pad: [2]u8 = .{ 0, 0 },
+};
+
+pub const NoOperation = extern struct {
+    opcode: u8 = 127,
+    unused: u8 = 0,
+    length: u16 = (@sizeOf(@This()) / 4),
 };
 
 // Error handling

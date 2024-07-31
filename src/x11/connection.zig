@@ -1,6 +1,22 @@
 const std = @import("std");
 const os = std.posix;
 
+pub const ConnectionOptions = struct {
+    read_timeout: i32 = 5000, // 5ms in microseconds
+    write_timeout: i32 = 5000, // 5ms in microseconds
+};
+
+pub fn connect(options: ConnectionOptions) !std.net.Stream {
+    // TODO: assuming unix socket
+    var buffer: [std.fs.MAX_PATH_BYTES]u8 = undefined;
+    const socket_path = try get_socket_path(&buffer);
+
+    const stream = try std.net.connectUnixSocket(socket_path);
+    try setTimeout(stream.handle, options.read_timeout, options.write_timeout);
+
+    return stream;
+}
+
 fn get_socket_path(buffer: []u8) ![]const u8 {
     var display = std.posix.getenv("DISPLAY") orelse ":0";
 
@@ -17,22 +33,6 @@ fn get_socket_path(buffer: []u8) ![]const u8 {
     std.mem.copyForwards(u8, socket_path[base_socket_path.len..socket_path_len], display[1..]);
 
     return socket_path;
-}
-
-pub const ConnectionOptions = struct {
-    read_timeout: i32 = 5000, // 5ms in microseconds
-    write_timeout: i32 = 5000, // 5ms in microseconds
-};
-
-pub fn connect(options: ConnectionOptions) !std.net.Stream {
-    // TODO: assuming unix socket
-    var buffer: [std.fs.MAX_PATH_BYTES]u8 = undefined;
-    const socket_path = try get_socket_path(&buffer);
-
-    const stream = try std.net.connectUnixSocket(socket_path);
-    try setTimeout(stream.handle, options.read_timeout, options.write_timeout);
-
-    return stream;
 }
 
 fn setTimeout(socket: os.socket_t, read_timeout: i32, write_timeout: i32) !void {
