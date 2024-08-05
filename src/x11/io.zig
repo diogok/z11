@@ -12,9 +12,7 @@ pub fn sendWithBytes(writer: anytype, request: anytype, bytes: []const u8) !void
     var req_bytes = std.mem.toBytes(request);
 
     // re-calc length to include extra data
-    const base_len: u16 = @sizeOf(@TypeOf(request)) / 4;
-    const add_len: u16 = @intCast(bytes.len + bytes.len % 4); // need to pad
-    const length: u16 = base_len + add_len / 4;
+    const length = get_padded_len(request, bytes);
     const len_bytes = std.mem.toBytes(length);
     req_bytes[2] = len_bytes[0];
     req_bytes[3] = len_bytes[1];
@@ -26,8 +24,52 @@ pub fn sendWithBytes(writer: anytype, request: anytype, bytes: []const u8) !void
     try writer.writeAll(bytes);
 
     // pad
-    const pad: [3]u8 = .{ 0, 0, 0 };
-    try writer.writeAll(pad[0..(bytes.len % 4)]);
+    const pad_len = get_pad_len(bytes);
+    const padding: [3]u8 = .{ 0, 0, 0 };
+    const pad = padding[0..pad_len];
+    try writer.writeAll(pad);
+}
+
+fn get_padded_len(request: anytype, bytes: []const u8) u16 {
+    const req_len: u16 = @sizeOf(@TypeOf(request)) / 4;
+    const bytes_len: u16 = @intCast(bytes.len);
+    const pad_len: u16 = get_pad_len(bytes);
+    const extra_len: u16 = (bytes_len + pad_len) / 4;
+    const length: u16 = req_len + extra_len;
+    return length;
+}
+
+test "Length calc" {
+    const change_prop = proto.ChangeProperty{ .window_id = 0, .property = 0, .property_type = 0 };
+    const len0 = get_padded_len(change_prop, "");
+
+    try testing.expectEqual(6, len0);
+
+    const len1 = get_padded_len(change_prop, "hello");
+    try testing.expectEqual(8, len1);
+}
+
+fn get_pad_len(bytes: []const u8) u16 {
+    const missing = bytes.len % 4;
+    if (missing == 0) {
+        return 0;
+    }
+    const pad: u16 = @intCast(4 - missing);
+    return pad;
+}
+
+test "padding length" {
+    const len0 = get_pad_len("");
+    try testing.expectEqual(0, len0);
+
+    const len1 = get_pad_len("1234");
+    try testing.expectEqual(0, len1);
+
+    const len2 = get_pad_len("12345");
+    try testing.expectEqual(3, len2);
+
+    const len3 = get_pad_len("12345678");
+    try testing.expectEqual(0, len3);
 }
 
 pub fn receive(reader: anytype) !?Message {
