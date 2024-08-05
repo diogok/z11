@@ -73,3 +73,29 @@ pub fn sendWithValues(writer: anytype, request: anytype, values: anytype) !void 
     const bytes = bytesFromValues(&buffer, values);
     try io.sendWithBytes(writer, request, bytes);
 }
+
+pub fn internAtom(conn: anytype, name: []const u8) !u32 {
+    const request = proto.InternAtom{ .length_of_name = @truncate(name.len) };
+    std.debug.print("intern this: {any} {s}\n", .{ request, name });
+    try io.sendWithBytes(conn, request, name);
+
+    const reply = try io.receiveReply(conn, proto.InternAtomReply);
+    if (reply) |r| {
+        std.debug.print("ATOM {s} {any}\n", .{ name, r });
+        return r.atom;
+    }
+
+    return error.FailedToInternAtom;
+}
+
+pub fn getProperty(conn: anytype, window_id: u32, atom: u32) !proto.GetPropertyReply {
+    const request = proto.GetProperty{ .window_id = window_id, .property = atom };
+    try io.send(conn, request);
+
+    const reply = try io.receiveReply(conn, proto.GetPropertyReply);
+    if (reply) |r| {
+        return r;
+    }
+
+    return error.FailedToGetProperty;
+}

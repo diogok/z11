@@ -98,6 +98,23 @@ pub fn receive(reader: anytype) !?Message {
     return null;
 }
 
+pub fn receiveReply(reader: anytype, ReplyType: type) !?ReplyType {
+    var message_buffer: [32]u8 = undefined;
+    _ = reader.read(&message_buffer) catch |err| {
+        switch (err) {
+            error.WouldBlock => return null,
+            else => return err,
+        }
+    };
+
+    var message_stream = std.io.fixedBufferStream(&message_buffer);
+    var message_reader = message_stream.reader();
+
+    const message = try message_reader.readStruct(ReplyType);
+
+    return message;
+}
+
 const Message = union(enum(u8)) {
     ErrorMessage: proto.ErrorMessage,
     Placeholder: proto.Placeholder,

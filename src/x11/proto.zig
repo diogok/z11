@@ -756,16 +756,33 @@ pub const CirculateWindow = extern struct {
     window_id: u32,
 };
 
+pub const InternAtom = extern struct {
+    opcode: u8 = 16,
+    only_if_exists: bool = false,
+    length: u16 = @sizeOf(@This()) / 4,
+    length_of_name: u16,
+    unused: [2]u8 = [2]u8{ 0, 0 },
+};
+
+pub const InternAtomReply = extern struct {
+    reply: u8,
+    pad: u8,
+    sequence_number: u16,
+    reply_length: u32,
+    atom: u32,
+    unused: [20]u8,
+};
+
 pub const ChangeProperty = extern struct {
     opcode: u8 = 18,
-    mode: u8 = enum { Replace, Prepend, Append },
+    mode: enum(u8) { Replace, Prepend, Append } = .Replace,
     length: u16 = @sizeOf(@This()) / 4,
     window_id: u32,
     property: u32,
     property_type: u32,
-    format: u8,
-    unused: [3]u8,
-    length_of_data: u32,
+    format: u8 = 8,
+    unused: [3]u8 = .{ 0, 0, 0 },
+    length_of_data: u32 = 0,
 };
 
 pub const DeleteProperty = extern struct {
@@ -778,16 +795,25 @@ pub const DeleteProperty = extern struct {
 
 pub const GetProperty = extern struct {
     opcode: u8 = 20,
-    delete: bool,
+    delete: bool = false,
     length: u16 = (@sizeOf(@This()) / 4),
     window_id: u32,
     property: u32,
-    property_type: u32,
-    long_offset: u32,
-    long_length: u32,
+    property_type: u32 = 0,
+    long_offset: u32 = 0,
+    long_length: u32 = 0,
 };
 
-//TODO: GetProperty Reply
+pub const GetPropertyReply = extern struct {
+    code: u8 = 1,
+    fomat: u8,
+    sequence_number: u16,
+    reply_length: u32,
+    property_type: u32,
+    bytes_after: u32,
+    value_len: u32,
+    pad: [12]u8,
+};
 
 pub const ListProperties = extern struct {
     opcode: u8 = 21,
