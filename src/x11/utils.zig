@@ -99,3 +99,26 @@ pub fn getProperty(conn: anytype, window_id: u32, atom: u32) !proto.GetPropertyR
 
     return error.FailedToGetProperty;
 }
+
+pub fn clientMessageData(clientMesage: proto.ClientMessage) ClientMessageData {
+    switch (clientMesage.format) {
+        8 => {
+            return ClientMessageData{ .u8 = clientMesage.data };
+        },
+        16 => {
+            return ClientMessageData{ .u16 = std.mem.bytesToValue([10]u16, &clientMesage.data) };
+        },
+        32 => {
+            return ClientMessageData{ .u32 = std.mem.bytesToValue([5]u32, &clientMesage.data) };
+        },
+        else => {
+            return ClientMessageData{ .u8 = clientMesage.data };
+        },
+    }
+}
+
+pub const ClientMessageData = union(enum) {
+    u8: [20]u8,
+    u16: [10]u16,
+    u32: [5]u32,
+};

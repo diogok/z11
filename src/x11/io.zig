@@ -84,7 +84,8 @@ pub fn receive(reader: anytype) !?Message {
     var message_stream = std.io.fixedBufferStream(&message_buffer);
     var message_reader = message_stream.reader();
 
-    const message_code = message_buffer[0];
+    // The most significant bit in this code is set if the event was generated from a SendEvent
+    const message_code = message_buffer[0] & 0b01111111;
 
     const message_tag = std.meta.Tag(Message);
     const message_values = comptime std.meta.fields(message_tag);
@@ -94,6 +95,7 @@ pub fn receive(reader: anytype) !?Message {
             return @unionInit(Message, tag.name, message);
         }
     }
+    std.debug.print("What?! {any}\n", .{message_code});
 
     return null;
 }

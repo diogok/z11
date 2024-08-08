@@ -14,16 +14,17 @@ pub fn main() !void {
 
     var xID = x11.XID.init(info.resource_id_base, info.resource_id_mask);
 
-    try x11.sendWithBytes(conn, x11.InternAtom{ .length_of_name = "WM_PROTOCOLS".len }, "WM_PROTOCOLS");
-    const wmProtocolsAtom = try x11.receiveReply(conn, x11.InternAtomReply);
-    std.debug.print("atom WM_PROTOCOLS {any}\n", .{wmProtocolsAtom});
+    try x11.sendWithBytes(conn, x11.InternAtom{ .length_of_name = "WM_PROTOCOLS".len, .only_if_exists = true }, "WM_PROTOCOLS");
+    const wm_protocols = try x11.receiveReply(conn, x11.InternAtomReply);
+    if (wm_protocols == null) {
+        return error.NoWMProtocols;
+    }
+    std.debug.print("WMV PROTOCOLS {d}\n", .{wm_protocols.?.atom});
 
     const string_atom = try x11.internAtom(conn, "STRING");
-    //_ = string_atom;
-    //const wm_name_atom = try x11.internAtom(conn, "WM_NAME");
-    //_ = wm_name_atom;
-    //const wm_delete_window_atom = try x11.internAtom(conn, "WM_DELETE_WINDOW");
-    //std.debug.print("atom delete {d}\n", .{wm_delete_window_atom});
+    const atom_atom = try x11.internAtom(conn, "ATOM");
+    const wm_name_atom = try x11.internAtom(conn, "WM_NAME");
+    const wm_delete_window_atom = try x11.internAtom(conn, "WM_DELETE_WINDOW");
 
     const window_id = try xID.genID();
     const event_masks = [_]x11.EventMask{ .Exposure, .StructureNotify, .SubstructureNotify, .PropertyChange };
@@ -55,14 +56,20 @@ pub fn main() !void {
 
     const set_name_req = x11.ChangeProperty{
         .window_id = window_id,
-        .property = 39, //wm_name_atom,
+        .property = wm_name_atom,
         .property_type = string_atom,
         .length_of_data = 5,
     };
-    //_ = set_name_req;
     try x11.sendWithBytes(conn, set_name_req, "hello");
-    //const wm_name_prop = try x11.getProperty(conn, window_id, wm_name_aom);
-    //std.debug.print("Prop: {any}\n", .{wm_name_prop});
+
+    const set_protocols = x11.ChangeProperty{
+        .window_id = window_id,
+        .property = wm_protocols.?.atom,
+        .property_type = atom_atom,
+        .format = 32,
+        .length_of_data = 1,
+    };
+    try x11.sendWithBytes(conn, set_protocols, &std.mem.toBytes(wm_delete_window_atom));
 
     const graphic_context_id = try xID.genID();
     const graphic_context_values = x11.GraphicContextValue{
@@ -134,6 +141,12 @@ pub fn main() !void {
                 },
                 .DestroyNotify => {
                     open = false;
+                },
+                .ClientMessage => |client_message| {
+                    const client_message_data = x11.clientMessageData(client_message);
+                    if (client_message_data.u32[0] == wm_delete_window_atom) {
+                        open = false;
+                    }
                 },
                 else => {},
             }
