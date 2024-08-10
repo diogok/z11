@@ -1,24 +1,38 @@
+//! Functions to connect to an X11 server.
+
 const std = @import("std");
 const os = std.posix;
 
+const log = std.log.scoped(.x11);
+
+/// Options for the X11 connection
 pub const ConnectionOptions = struct {
+    /// Read timeout in microseconds (5000 => 5ms)
     read_timeout: i32 = 5000, // 5ms in microseconds
+    /// Write timeout in microseconds (5000 => 5ms)
     write_timeout: i32 = 5000, // 5ms in microseconds
 };
 
+/// Connects to local X11 server.
+/// It will look for DISPLAY env variable, or default to :0.
 pub fn connect(options: ConnectionOptions) !std.net.Stream {
-    // TODO: assuming unix socket
     var buffer: [std.fs.MAX_PATH_BYTES]u8 = undefined;
     const socket_path = try get_socket_path(&buffer);
 
+    log.debug("Socket path: {s}", .{socket_path});
+
+    // Assuming unix socket
     const stream = try std.net.connectUnixSocket(socket_path);
     try setTimeout(stream.handle, options.read_timeout, options.write_timeout);
+
+    log.debug("Connected", .{});
 
     return stream;
 }
 
 fn get_socket_path(buffer: []u8) ![]const u8 {
-    var display = std.posix.getenv("DISPLAY") orelse ":0";
+    const display = std.posix.getenv("DISPLAY") orelse ":0";
+    log.debug("Display: {s}", .{display});
 
     const base_socket_path = "/tmp/.X11-unix/X";
     const socket_path_len = base_socket_path.len + display.len - 1;

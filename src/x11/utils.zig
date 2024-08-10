@@ -4,6 +4,8 @@ const io = @import("io.zig");
 
 const testing = std.testing;
 
+const log = std.log.scoped(.x11);
+
 pub fn mask(values: anytype) u32 {
     var value_mask: u32 = 0;
     for (values) |value| {

@@ -1,17 +1,29 @@
+//! Functions get authentication information to connect to X11 server.
+//! Currently only supports MIT-MAGIC-COOKIE.
+
 const std = @import("std");
 
+const log = std.log.scoped(.x11);
+
+/// Looks for the Xauthority file and open it.
+/// Calee should close it after use.
 fn open_xauth_file() !std.fs.File {
     if (std.posix.getenv("XAUTHORITY")) |file| {
+        log.debug("Xauthority file: {s}", .{file});
         return std.fs.openFileAbsolute(file, .{});
     } else if (std.posix.getenv("HOME")) |home| {
         var dir = try std.fs.openDirAbsolute(home, .{});
         defer dir.close();
+        log.debug("Xauthority file: {s}/.Xauthority", .{home});
         return dir.openFile(".Xauthority", .{});
     } else {
         return error.NoAuthorityFileFound;
     }
 }
 
+/// Reads the authority file.
+/// Only supports MIT-MAGIC-COOKIE method.
+/// Ignore address and port, only support local method.
 fn read_xauth_file(allocator: std.mem.Allocator, xauth_file: std.fs.File) !XAuth {
     var xauth_reader = xauth_file.reader();
 
@@ -38,6 +50,8 @@ fn read_xauth_file(allocator: std.mem.Allocator, xauth_file: std.fs.File) !XAuth
         return error.UnsupportedAuth;
     }
 
+    log.debug("Auth name: {s}", .{xauth_name});
+
     return .{
         .name = xauth_name,
         .data = xauth_data,
@@ -45,6 +59,7 @@ fn read_xauth_file(allocator: std.mem.Allocator, xauth_file: std.fs.File) !XAuth
     };
 }
 
+/// Authentication information
 pub const XAuth = struct {
     name: []const u8,
     data: []const u8,
@@ -56,6 +71,9 @@ pub const XAuth = struct {
     }
 };
 
+/// Return authentication information.
+/// It will look at XAUTHORITY env var for location of Xauthority file, next it will look for it at HOME.
+/// It returns a XAuth struct that needs to be deinit'd after use.
 pub fn get_auth(allocator: std.mem.Allocator) !XAuth {
     const xauth_file = try open_xauth_file();
     defer xauth_file.close();

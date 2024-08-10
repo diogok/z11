@@ -1,5 +1,7 @@
 const std = @import("std");
 
+const log = std.log.scoped(.x11);
+
 pub const XID = struct {
     base: u32,
     inc: u32,

@@ -2,6 +2,8 @@ const std = @import("std");
 const xauth = @import("auth.zig");
 const proto = @import("proto.zig");
 
+const log = std.log.scoped(.x11);
+
 pub fn setup(allocator: std.mem.Allocator, connection: std.net.Stream) !Setup {
     const auth = try xauth.get_auth(allocator);
     defer auth.deinit();

@@ -3,8 +3,11 @@ const proto = @import("proto.zig");
 
 const testing = std.testing;
 
+const log = std.log.scoped(.x11);
+
 pub fn send(writer: anytype, request: anytype) !void {
     const req_bytes: []const u8 = &std.mem.toBytes(request);
+    log.debug("Sending (size: {d}): {any}", .{ req_bytes.len, request });
     try writer.writeAll(req_bytes);
 }
 
@@ -12,10 +15,16 @@ pub fn sendWithBytes(writer: anytype, request: anytype, bytes: []const u8) !void
     var req_bytes = std.mem.toBytes(request);
 
     // re-calc length to include extra data
+
+    // get length including the request, extra bytes and padding needed
     const length = get_padded_len(request, bytes);
+    // bytes 3 and 4 (a u16) of a request is always length, we can override it to include the total size
     const len_bytes = std.mem.toBytes(length);
     req_bytes[2] = len_bytes[0];
     req_bytes[3] = len_bytes[1];
+
+    log.debug("Sending (size: {d}): {any}", .{ req_bytes.len, request });
+    log.debug("Sending extra (size: {d}): {b}", .{ bytes.len, bytes });
 
     // send request with overriden length
     try writer.writeAll(&req_bytes);
@@ -23,7 +32,7 @@ pub fn sendWithBytes(writer: anytype, request: anytype, bytes: []const u8) !void
     // write extra bytes
     try writer.writeAll(bytes);
 
-    // pad
+    // calculate padding and send it
     const pad_len = get_pad_len(bytes);
     const padding: [3]u8 = .{ 0, 0, 0 };
     const pad = padding[0..pad_len];
@@ -95,7 +104,8 @@ pub fn receive(reader: anytype) !?Message {
             return @unionInit(Message, tag.name, message);
         }
     }
-    std.debug.print("What?! {any}\n", .{message_code});
+
+    log.warn("Unrecognized message: code={d} bytes={b}", .{ message_code, message_buffer });
 
     return null;
 }

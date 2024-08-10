@@ -2,6 +2,9 @@ const std = @import("std");
 const xsetup = @import("setup.zig");
 const proto = @import("proto.zig");
 
+const log = std.log.scoped(.x11);
+
+/// Minimal information to be able to convert to X11 image format
 pub const ImageInfo = struct {
     visual_type: proto.VisualType,
     format: proto.Format,
@@ -63,7 +66,7 @@ pub fn rgbaToZPixmapAlloc(allocator: std.mem.Allocator, info: ImageInfo, rgba: [
         return error.UnsupportedScanlinePad;
     }
 
-    // TODO: lot of assumptions here
+    // Lot of assumptions made here
     const pixels = try allocator.alloc(u8, rgba.len);
     for (0..(rgba.len / 4)) |i| {
         const red = (rgba[i * 4] | info.visual_type.red_mask);
@@ -81,6 +84,5 @@ pub fn rgbaToZPixmapAlloc(allocator: std.mem.Allocator, info: ImageInfo, rgba: [
         pixels[i * 4 + 3] = buffer[3];
     }
 
-    std.debug.print("Pixels: {any}\n", .{pixels[0..4]});
     return pixels;
 }
