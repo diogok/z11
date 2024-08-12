@@ -1,3 +1,7 @@
+//! Structs following X11 protocol.
+//! Here we have all messages, requests, responses and replies that can be sent or received from X11 server.
+//! Structs are extern so they can be directly serialized/deserialized and have fixed byte format.
+
 // common structs
 
 pub const Point = extern struct {

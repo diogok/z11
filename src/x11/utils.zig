@@ -1,3 +1,6 @@
+//! Utilities to make some common tasks easier.
+//! Not part of standard.
+
 const std = @import("std");
 const proto = @import("proto.zig");
 const io = @import("io.zig");
@@ -6,6 +9,7 @@ const testing = std.testing;
 
 const log = std.log.scoped(.x11);
 
+/// Build a mask as expected from, example, CreateWindow.eventMask.
 pub fn mask(values: anytype) u32 {
     var value_mask: u32 = 0;
     for (values) |value| {
@@ -16,6 +20,8 @@ pub fn mask(values: anytype) u32 {
 
 test "mask" {}
 
+/// Build a mask as expected from, example, CreateWindow.eventMask.
+/// Based of values you will pass.
 pub fn maskFromValues(comptime MaskType: type, values: anytype) u32 {
     var value_mask: u32 = 0;
     inline for (@typeInfo(@TypeOf(values)).Struct.fields) |field| {
@@ -38,8 +44,7 @@ test "mask from values" {
 }
 
 fn bufferFor(MaskType: type) [@typeInfo(MaskType).Struct.fields.len * 4]u8 {
-    const buffer: [@typeInfo(MaskType).Struct.fields.len * 4]u8 = undefined;
-    return buffer;
+    return undefined;
 }
 
 fn bytesFromValues(buffer: []u8, values: anytype) []const u8 {
@@ -70,38 +75,31 @@ test "bytesFromValues" {
     try testing.expectEqualSlices(u8, &expected, bytes);
 }
 
+/// Like io.sendWithBytes, but this build the bytes based on values.
+/// Example is CreateWindow WindowValue (to go with WindowMasks).
 pub fn sendWithValues(writer: anytype, request: anytype, values: anytype) !void {
     var buffer = bufferFor(@TypeOf(values));
     const bytes = bytesFromValues(&buffer, values);
     try io.sendWithBytes(writer, request, bytes);
 }
 
+/// Utility to get ID of an Atom.
+/// This is naive because it expects that the next message is always the reply.
+/// Works fine before you create a window.
 pub fn internAtom(conn: anytype, name: []const u8) !u32 {
     const request = proto.InternAtom{ .length_of_name = @truncate(name.len) };
-    std.debug.print("intern this: {any} {s}\n", .{ request, name });
     try io.sendWithBytes(conn, request, name);
 
-    const reply = try io.receiveReply(conn, proto.InternAtomReply);
+    const reply = try receiveReply(conn, proto.InternAtomReply);
     if (reply) |r| {
-        std.debug.print("ATOM {s} {any}\n", .{ name, r });
         return r.atom;
     }
 
     return error.FailedToInternAtom;
 }
 
-pub fn getProperty(conn: anytype, window_id: u32, atom: u32) !proto.GetPropertyReply {
-    const request = proto.GetProperty{ .window_id = window_id, .property = atom };
-    try io.send(conn, request);
-
-    const reply = try io.receiveReply(conn, proto.GetPropertyReply);
-    if (reply) |r| {
-        return r;
-    }
-
-    return error.FailedToGetProperty;
-}
-
+/// ClientMessage.data values can depend on the format.
+/// This return already in the right format.
 pub fn clientMessageData(clientMesage: proto.ClientMessage) ClientMessageData {
     switch (clientMesage.format) {
         8 => {
@@ -119,8 +117,30 @@ pub fn clientMessageData(clientMesage: proto.ClientMessage) ClientMessageData {
     }
 }
 
+/// Union to use the right byte format for a ClientMessage
 pub const ClientMessageData = union(enum) {
     u8: [20]u8,
     u16: [10]u16,
     u32: [5]u32,
 };
+
+/// Same a io.Receive, but for specific replies.
+/// Replies don't follow quite the same rules as regular Messages,
+/// It cannot be identified by first code.
+/// So here we explicitly wait for a reply.
+pub fn receiveReply(reader: anytype, ReplyType: type) !?ReplyType {
+    var message_buffer: [32]u8 = undefined;
+    _ = reader.read(&message_buffer) catch |err| {
+        switch (err) {
+            error.WouldBlock => return null,
+            else => return err,
+        }
+    };
+
+    var message_stream = std.io.fixedBufferStream(&message_buffer);
+    var message_reader = message_stream.reader();
+
+    const message = try message_reader.readStruct(ReplyType);
+
+    return message;
+}

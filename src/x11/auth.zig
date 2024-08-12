@@ -73,7 +73,7 @@ pub const XAuth = struct {
 
 /// Return authentication information.
 /// It will look at XAUTHORITY env var for location of Xauthority file, next it will look for it at HOME.
-/// It returns a XAuth struct that needs to be deinit'd after use.
+/// It returns an XAuth struct that needs to be deinit'd after use.
 pub fn get_auth(allocator: std.mem.Allocator) !XAuth {
     const xauth_file = try open_xauth_file();
     defer xauth_file.close();

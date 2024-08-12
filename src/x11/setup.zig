@@ -1,9 +1,15 @@
+//! After a connection is estibilished, this functions return the Setup.
+//! This is expected to be the first messages sent and received on a new connection.
+//! It return important information for building Windows and Images.
+
 const std = @import("std");
 const xauth = @import("auth.zig");
 const proto = @import("proto.zig");
 
 const log = std.log.scoped(.x11);
 
+/// First function to call on a new connection.
+/// It will return important information for most of following requests.
 pub fn setup(allocator: std.mem.Allocator, connection: std.net.Stream) !Setup {
     const auth = try xauth.get_auth(allocator);
     defer auth.deinit();
@@ -49,8 +55,10 @@ fn readSetupReply(allocator: std.mem.Allocator, reader: anytype) !Setup {
     var reply_reader = reply_stream.reader();
 
     const base_reply = try reply_reader.readStruct(proto.SetupContent);
+    log.debug("Base setup: {any}", .{base_reply});
 
     // TODO: missing errdefer to de-allocate
+    // TODO: maybe split functions to read each part
 
     const vendor = try allocator.alloc(u8, base_reply.vendor_len);
     defer allocator.free(vendor);
@@ -60,21 +68,25 @@ fn readSetupReply(allocator: std.mem.Allocator, reader: anytype) !Setup {
     const formats = try allocator.alloc(proto.Format, base_reply.pixmap_formats_len);
     for (formats, 0..) |_, format_index| {
         formats[format_index] = try reply_reader.readStruct(proto.Format);
+        log.debug("Format: {any}", .{formats[format_index]});
     }
 
     const screens = try allocator.alloc(Screen, base_reply.roots_len);
     for (screens, 0..) |_, screen_index| {
         const screen = try reply_reader.readStruct(proto.Screen);
         screens[screen_index] = Screen.initFromProto(screen);
+        log.debug("Screen: {any}", .{screens[screen_index]});
 
         const allowed_depths = try allocator.alloc(Depth, screen.allowed_depths_len);
         for (allowed_depths, 0..) |_, depth_index| {
             const depth = try reply_reader.readStruct(proto.Depth);
             allowed_depths[depth_index] = Depth.initFromProto(depth);
+            log.debug("Allowed depths: {any}", .{allowed_depths[depth_index]});
 
             const visual_types = try allocator.alloc(proto.VisualType, depth.visual_type_len);
             for (visual_types, 0..) |_, visual_type_index| {
                 visual_types[visual_type_index] = try reply_reader.readStruct(proto.VisualType);
+                log.debug("Visual type: {any}", .{visual_types[visual_type_index]});
             }
             allowed_depths[depth_index].visual_types = visual_types;
         }
@@ -88,9 +100,12 @@ fn readSetupReply(allocator: std.mem.Allocator, reader: anytype) !Setup {
     return result;
 }
 
+/// Setup struct hold information needed for a few requests.
 pub const Setup = struct {
     allocator: std.mem.Allocator,
 
+    /// Resoure ID base and mask are used for generating IDs.
+    /// For example use IDs of windows, graphical context and pixmaps.
     resource_id_base: u32,
     resource_id_mask: u32,
 
@@ -104,7 +119,10 @@ pub const Setup = struct {
     bitmap_format_scanline_unit: u8,
     bitmap_format_scanline_pad: u8,
 
+    /// Format is used for generating images.
     formats: []const proto.Format = &[_]proto.Format{},
+    /// Have information about the screen,
+    /// so you can create window and other drawables with the right color space and depth.
     screens: []const Screen = &[_]Screen{},
 
     pub fn initFromProto(allocator: std.mem.Allocator, reply: proto.SetupContent) @This() {
@@ -131,7 +149,9 @@ pub const Setup = struct {
     }
 };
 
+/// The screen you will use.
 pub const Screen = struct {
+    /// The root screen or window, your first window will be on top of this.
     root: u32,
     colormap: u32,
     white_pixel: u32,
@@ -159,6 +179,7 @@ pub const Screen = struct {
     }
 };
 
+/// Depth of the screen.
 pub const Depth = struct {
     depth: u8,
     visual_types: []proto.VisualType = &[_]proto.VisualType{},

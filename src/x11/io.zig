@@ -1,3 +1,6 @@
+//! Functions to send Requests and receive Responses, Messages and Replies from an X11 socket.
+//! This will be part of your core loop.
+
 const std = @import("std");
 const proto = @import("proto.zig");
 
@@ -5,12 +8,17 @@ const testing = std.testing;
 
 const log = std.log.scoped(.x11);
 
+/// Send a request to a socket.
+/// Use with any Request struct from proto namespace that does not need extra data.
 pub fn send(writer: anytype, request: anytype) !void {
     const req_bytes: []const u8 = &std.mem.toBytes(request);
     log.debug("Sending (size: {d}): {any}", .{ req_bytes.len, request });
     try writer.writeAll(req_bytes);
 }
 
+/// Send a request to a socket with some extra bytes at the end.
+/// It re-calculate the propriate length and add neded padding.
+/// Use with Request structs from proto namespace that require additional data to be sent.
 pub fn sendWithBytes(writer: anytype, request: anytype, bytes: []const u8) !void {
     var req_bytes = std.mem.toBytes(request);
 
@@ -24,7 +32,7 @@ pub fn sendWithBytes(writer: anytype, request: anytype, bytes: []const u8) !void
     req_bytes[3] = len_bytes[1];
 
     log.debug("Sending (size: {d}): {any}", .{ req_bytes.len, request });
-    log.debug("Sending extra (size: {d}): {b}", .{ bytes.len, bytes });
+    log.debug("Sending extra bytes len  {d}", .{bytes.len});
 
     // send request with overriden length
     try writer.writeAll(&req_bytes);
@@ -39,12 +47,13 @@ pub fn sendWithBytes(writer: anytype, request: anytype, bytes: []const u8) !void
     try writer.writeAll(pad);
 }
 
+/// Return total length, including padding, that is need for whole data to be a multiple of 4.
 fn get_padded_len(request: anytype, bytes: []const u8) u16 {
-    const req_len: u16 = @sizeOf(@TypeOf(request)) / 4;
-    const bytes_len: u16 = @intCast(bytes.len);
-    const pad_len: u16 = get_pad_len(bytes);
-    const extra_len: u16 = (bytes_len + pad_len) / 4;
-    const length: u16 = req_len + extra_len;
+    const req_len: u16 = @sizeOf(@TypeOf(request)) / 4; // size of core request
+    const bytes_len: u16 = @intCast(bytes.len); // size of extra bytes
+    const pad_len: u16 = get_pad_len(bytes); // size of padding
+    const extra_len: u16 = (bytes_len + pad_len) / 4; // total extra len (bytes + padding)
+    const length: u16 = req_len + extra_len; // total request length
     return length;
 }
 
@@ -58,6 +67,7 @@ test "Length calc" {
     try testing.expectEqual(8, len1);
 }
 
+/// Get how much padding is needed for the extra bytes to be multiple of 4.
 fn get_pad_len(bytes: []const u8) u16 {
     const missing = bytes.len % 4;
     if (missing == 0) {
@@ -81,11 +91,13 @@ test "padding length" {
     try testing.expectEqual(0, len3);
 }
 
+/// Receive next message from X11 server.
 pub fn receive(reader: anytype) !?Message {
     var message_buffer: [32]u8 = undefined;
+
     _ = reader.read(&message_buffer) catch |err| {
         switch (err) {
-            error.WouldBlock => return null,
+            error.WouldBlock => return null, // WouldBlock means a timeout, so there is no new message for now
             else => return err,
         }
     };
@@ -94,12 +106,16 @@ pub fn receive(reader: anytype) !?Message {
     var message_reader = message_stream.reader();
 
     // The most significant bit in this code is set if the event was generated from a SendEvent
+    // So we remove it
     const message_code = message_buffer[0] & 0b01111111;
 
-    const message_tag = std.meta.Tag(Message);
-    const message_values = comptime std.meta.fields(message_tag);
-    inline for (message_values) |tag| {
-        if (message_code == tag.value) {
+    // Using comptime to map to all known messages
+    const message_tag = std.meta.Tag(Message); // Get Tag object of list of possible messages
+    const message_values = comptime std.meta.fields(message_tag); // Get all fields of the Tag
+    inline for (message_values) |tag| { // For each possible message
+        // Here is emitted code
+        if (message_code == tag.value) { // The tag value is the same as the received message
+            // Return the struct from the bytes and build the union.
             const message = try message_reader.readStruct(@field(proto, tag.name));
             return @unionInit(Message, tag.name, message);
         }
@@ -110,23 +126,7 @@ pub fn receive(reader: anytype) !?Message {
     return null;
 }
 
-pub fn receiveReply(reader: anytype, ReplyType: type) !?ReplyType {
-    var message_buffer: [32]u8 = undefined;
-    _ = reader.read(&message_buffer) catch |err| {
-        switch (err) {
-            error.WouldBlock => return null,
-            else => return err,
-        }
-    };
-
-    var message_stream = std.io.fixedBufferStream(&message_buffer);
-    var message_reader = message_stream.reader();
-
-    const message = try message_reader.readStruct(ReplyType);
-
-    return message;
-}
-
+/// A Map with all known messages, in order of message code.
 const Message = union(enum(u8)) {
     ErrorMessage: proto.ErrorMessage,
     Placeholder: proto.Placeholder,

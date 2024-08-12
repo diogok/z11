@@ -30,6 +30,9 @@ pub fn connect(options: ConnectionOptions) !std.net.Stream {
     return stream;
 }
 
+/// Return the file path for the socket to active display.
+/// Look at DISPLAY env var for display, else default to :0
+/// Uses provided buffer and return only the needed part.
 fn get_socket_path(buffer: []u8) ![]const u8 {
     const display = std.posix.getenv("DISPLAY") orelse ":0";
     log.debug("Display: {s}", .{display});
@@ -49,6 +52,8 @@ fn get_socket_path(buffer: []u8) ![]const u8 {
     return socket_path;
 }
 
+/// Set read and write timeout on a socket.
+/// Timeout units in microseconds (1000 microsecond is 1 millisecond).
 fn setTimeout(socket: os.socket_t, read_timeout: i32, write_timeout: i32) !void {
     if (read_timeout > 0) {
         var timeout: os.timeval = undefined;
